@@ -67,17 +67,24 @@ const walk = (
   tiles: Tiles,
   [yStart, xStart]: [number, number],
   [currY, currX, currDir]: [number, number, Direction],
-  stepCount: number = 0
+  stepCount: number = 0,
+  ps = []
 ): number | undefined => {
-  const nextTile = findNextTile(tiles, currY, currX, currDir);
+  const next = findNextTile(tiles, currY, currX, currDir);
 
-  if (!nextTile) return;
+  if (!next) return;
 
-  if (nextTile[0] === yStart && nextTile[1] === xStart) {
-    return stepCount + 1;
+  if (next[0] === yStart && next[1] === xStart) {
+    ps.push([next[0], next[1]]);
+    return [stepCount + 1, ps];
   }
 
-  return walk(tiles, [yStart, xStart], [...nextTile], stepCount + 1);
+  const nextTile: Tile = tiles[next[0]][next[1]];
+  if (nextTile !== TILE["-"] && nextTile !== TILE["|"]) {
+    ps.push([next[0], next[1]]);
+  }
+
+  return walk(tiles, [yStart, xStart], [...next], stepCount + 1, ps);
 };
 
 await txtFile.text().then((input) => {
@@ -87,14 +94,40 @@ await txtFile.text().then((input) => {
 
   const [yStart, xStart] = findStartingTile(tiles, 0);
 
-  const p1 =
-    Math.max(
-      ...(Object.values(DIR)
-        .map((startDir) =>
-          walk(tiles, [yStart, xStart], [yStart, xStart, startDir], 0)
-        )
-        .filter(Boolean) as number[])
-    ) / 2;
+  // const p1 =
+  //   Math.max(
+  //     ...(Object.values(DIR)
+  //       .map((startDir) =>
+  //         walk(tiles, [yStart, xStart], [yStart, xStart, startDir], 0)
+  //       )
+  //       .filter(Boolean) as number[])
+  //   ) / 2;
 
-  console.log("Part 1", p1);
+  // console.log("Part 1", p1);
+
+  const [stepCount, ps] = walk(
+    tiles,
+    [yStart, xStart],
+    [yStart, xStart, DIR.right],
+    0,
+    []
+  );
+
+  console.log("stepcount", stepCount);
+  // console.log("ps", ps);
+
+  let sum = 0;
+  for (let i = 0; i < ps.length; i++) {
+    if (i === ps.length - 1) {
+      sum = sum + (ps[i][0] + ps[0][0]) * (ps[i][1] - ps[0][1]);
+    } else {
+      sum = sum + (ps[i][0] + ps[i + 1][0]) * (ps[i][1] - ps[i + 1][1]);
+    }
+  }
+  const area = Math.abs(sum / 2);
+
+  const p2 = Math.abs(area - stepCount / 2) + 1
+
+  console.log("!! area", area);
+  console.log("!! p2", p2);
 });
