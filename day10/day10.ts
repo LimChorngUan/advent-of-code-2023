@@ -68,23 +68,37 @@ const walk = (
   [yStart, xStart]: [number, number],
   [currY, currX, currDir]: [number, number, Direction],
   stepCount: number = 0,
-  ps = []
-): number | undefined => {
+  vertices: number[][] = []
+): [number, number[][]] | undefined => {
   const next = findNextTile(tiles, currY, currX, currDir);
 
   if (!next) return;
 
   if (next[0] === yStart && next[1] === xStart) {
-    ps.push([next[0], next[1]]);
-    return [stepCount + 1, ps];
+    vertices.push([next[0], next[1]]);
+    return [stepCount + 1, vertices];
   }
 
   const nextTile: Tile = tiles[next[0]][next[1]];
   if (nextTile !== TILE["-"] && nextTile !== TILE["|"]) {
-    ps.push([next[0], next[1]]);
+    vertices.push([next[0], next[1]]);
   }
 
-  return walk(tiles, [yStart, xStart], [...next], stepCount + 1, ps);
+  return walk(tiles, [yStart, xStart], [...next], stepCount + 1, vertices);
+};
+
+const findPolygonArea = (vertices: number[][]) => {
+  let sum = 0;
+  const n = vertices.length;
+
+  for (let i = 0; i < n; i++) {
+    const [y1, y2] = [vertices[i][0], vertices[(i + 1) % n][0]];
+    const [x1, x2] = [vertices[i][1], vertices[(i + 1) % n][1]];
+
+    sum = sum + (y1 + y2) * (x1 - x2);
+  }
+
+  return Math.abs(sum / 2);
 };
 
 await txtFile.text().then((input) => {
@@ -93,41 +107,15 @@ await txtFile.text().then((input) => {
     .map((line) => line.split("").map((tile) => TILE[tile]));
 
   const [yStart, xStart] = findStartingTile(tiles, 0);
+  const [totalSteps, vertices] = Object.values(DIR)
+    .map((startDir) =>
+      walk(tiles, [yStart, xStart], [yStart, xStart, startDir], 0)
+    )
+    .filter(Boolean)[0];
 
-  // const p1 =
-  //   Math.max(
-  //     ...(Object.values(DIR)
-  //       .map((startDir) =>
-  //         walk(tiles, [yStart, xStart], [yStart, xStart, startDir], 0)
-  //       )
-  //       .filter(Boolean) as number[])
-  //   ) / 2;
+  const p1 = totalSteps / 2;
+  const p2 = Math.abs(findPolygonArea(vertices) - totalSteps / 2) + 1;
 
-  // console.log("Part 1", p1);
-
-  const [stepCount, ps] = walk(
-    tiles,
-    [yStart, xStart],
-    [yStart, xStart, DIR.right],
-    0,
-    []
-  );
-
-  console.log("stepcount", stepCount);
-  // console.log("ps", ps);
-
-  let sum = 0;
-  for (let i = 0; i < ps.length; i++) {
-    if (i === ps.length - 1) {
-      sum = sum + (ps[i][0] + ps[0][0]) * (ps[i][1] - ps[0][1]);
-    } else {
-      sum = sum + (ps[i][0] + ps[i + 1][0]) * (ps[i][1] - ps[i + 1][1]);
-    }
-  }
-  const area = Math.abs(sum / 2);
-
-  const p2 = Math.abs(area - stepCount / 2) + 1
-
-  console.log("!! area", area);
+  console.log("!! p1", p1);
   console.log("!! p2", p2);
 });
