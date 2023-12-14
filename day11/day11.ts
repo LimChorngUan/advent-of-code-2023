@@ -1,5 +1,3 @@
-import exp from "constants";
-
 const txtFile = Bun.file("./day11.txt");
 
 const SPACE = ".";
