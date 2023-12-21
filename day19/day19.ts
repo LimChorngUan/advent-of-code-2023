@@ -12,15 +12,6 @@ type WorkflowStep =
       count: number;
       nextWorkflowName: string;
     };
-type Bla = {
-  currWorkflowName: string;
-  part: {
-    x: number[];
-    m: number[];
-    a: number[];
-    s: number[];
-  };
-};
 
 const parseWorkflowStep = (step: string): WorkflowStep => {
   if (step.includes(">") || step.includes("<")) {
@@ -29,7 +20,7 @@ const parseWorkflowStep = (step: string): WorkflowStep => {
     const [partCategory, rest] = step.split(isGreaterThan ? ">" : "<");
     const [count, nextWorkflowName] = rest.split(":");
     return {
-      partCategory,
+      partCategory: partCategory as PartCategory,
       comparison: isGreaterThan ? ">" : "<",
       count: parseInt(count),
       nextWorkflowName,
