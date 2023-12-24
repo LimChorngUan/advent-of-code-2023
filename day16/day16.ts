@@ -64,57 +64,82 @@ type X = number;
 type Vector = [Y, X, Direction];
 
 const walk = (
-  mirrorGrid: Grid,
-  currEnergizedGrid: Grid,
-  currCoords: Vector[] = [[0, 0, DIRECTION.right]],
-  i = 0
-): Grid => {
-  const nextCoords = currCoords
-    .flatMap(([y, x, dir]) => {
-      const gridType: GridType = mirrorGrid[y][x];
-      const next: Vector[] = GRID_TYPE_TO_DIR[gridType][dir].map((nextDir) => [
-        y + DIRECTION_TO_COOR_MAP[nextDir][0],
-        x + DIRECTION_TO_COOR_MAP[nextDir][1],
-        nextDir,
-      ]);
+  grid: Grid,
+  beams: Map<number, Vector[]>,
+  maxBeamI: number,
+  energizedCoords: [Y, X][]
+) => {
+  const newEnergizedCoords: [Y, X][] = [];
+  const beamsIterator = beams.entries();
+  const newBeams = new Map(beamsIterator);
+  let newMaxBeamI = maxBeamI;
 
-      return next;
-    })
-    .filter(
-      ([y, x]) =>
-        y >= 0 && y < mirrorGrid.length && x >= 0 && x < mirrorGrid[0].length
-    );
+  for (const beam of beams) {
+    const [beamN, beamVectors] = beam;
+    const [currY, currX, currDir] = beamVectors[beamVectors.length - 1];
+    const currGridType = grid[currY][currX];
 
-console.log('nextCoords', nextCoords)
+    const nextVectors: Vector[] = GRID_TYPE_TO_DIR[currGridType][currDir]
+      .map(
+        (nextDir) =>
+          [
+            currY + DIRECTION_TO_COOR_MAP[nextDir][0],
+            currX + DIRECTION_TO_COOR_MAP[nextDir][1],
+            nextDir,
+          ] as Vector
+      )
+      .filter(([nextY, nextX, nextDir]) => {
+        const outOfGrid =
+          nextY < 0 ||
+          nextY >= grid.length ||
+          nextX < 0 ||
+          nextX >= grid[0].length;
+        const isLoop = beamVectors.some(
+          (vector) =>
+            vector[0] === nextY && vector[1] === nextX && vector[2] === nextDir
+        );
 
-  const nextEnergizedGrid = currEnergizedGrid.map((row) =>
-    row.map((col) => col)
-  );
-  nextCoords.forEach(([nextY, nextX]) => {
-    nextEnergizedGrid[nextY].splice(nextX, 1, GRID_TYPE.energized);
-  });
+        return !outOfGrid && !isLoop;
+      });
 
-  // if (nextEnergizedGrid.join() === currEnergizedGrid.join())
-  //   return nextEnergizedGrid;
+    if (nextVectors.length === 0) {
+      newBeams.delete(beamN);
+      break;
+    } else {
+      newBeams.set(beamN, [...beamVectors, nextVectors[0]]);
+      newEnergizedCoords.push([nextVectors[0][0], nextVectors[0][1]]);
+    }
 
-  if (i === 50)
-    return nextEnergizedGrid;
-  return walk(mirrorGrid, nextEnergizedGrid, nextCoords, i + 1);
+    if (nextVectors.length === 2) {
+      newBeams.set(newMaxBeamI + 1, [...beamVectors, nextVectors[1]]);
+      newEnergizedCoords.push([nextVectors[1][0], nextVectors[1][1]]);
+      newMaxBeamI += 1
+    }
+  }
+
+  if (newBeams.size === 0) return energizedCoords;
+
+  return walk(grid, newBeams,newMaxBeamI, [...energizedCoords, ...newEnergizedCoords]);
 };
 
 await txtFile.text().then((input) => {
   const grid = input.split("\n").map((line) => line.split("")) as Grid;
-  const initEnergizedGrid = grid.map((row) => row.map((_) => ".")) as Grid;
-  const initCoords: Vector[] = [[0, 0, DIRECTION.right]];
-  initEnergizedGrid[0][0] = "#";
+  const initVector = [0, 0, DIRECTION.right];
+  const initBeams = new Map();
+  initBeams.set(0, [initVector]);
 
-  const finalEnergizedGrid = walk(grid, initEnergizedGrid, initCoords);
-  console.log(finalEnergizedGrid);
+  const energizedCoords = walk(grid, initBeams, 0, [[0, 0]]);
+  const energizedGridSize = grid
+    .map((row, rowI) =>
+      row.map((col, colI) =>
+        energizedCoords.some(([y, x]) => y === rowI && x === colI) ? "#" : "."
+      )
+    )
+    .reduce(
+      (acc, curr) =>
+        acc + curr.reduce((sum, tile) => sum + (tile === "#" ? 1 : 0), 0),
+      0
+    );
 
-  const p1 = finalEnergizedGrid
-    .join("")
-    .split("")
-    .reduce((acc, curr) => acc + (curr === GRID_TYPE.energized ? 1 : 0), 0);
-
-  console.log("Part 1: ", p1);
+  console.log("Part 1: ", energizedGridSize);
 });
